@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
 import type { CanvasTemplate } from '../types/canvas'
 
 
@@ -17,9 +16,10 @@ const onDelete = () => emit('delete', props.card.id)
   <div
       class="hover:grayscale-50 hover:cursor-pointer border border-gray-300 rounded p-4 shadow-sm flex flex-col"
   >
+    <img v-if="card.preview_image" :src="card.preview_image" alt="">
     <h2 class="text-lg font-semibold mb-2">{{ card.name }}</h2>
     <p class="flex-grow">{{ card.tags }}</p>
-    <img v-if="card.preview_image" :src="card.preview_image" alt="">
+
     <div class="mt-4 flex justify-end space-x-2">
       <button
           @click="onEdit"
