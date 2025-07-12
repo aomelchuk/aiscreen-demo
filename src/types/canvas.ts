@@ -7,7 +7,7 @@ export interface CanvasTemplate {
     tags?: string[]
     type?: string,
     description?: string,
-    preview_image?: string
+    preview_image?: File | string,
     created_at?: string
     updated_at?: string
     created_by?: string

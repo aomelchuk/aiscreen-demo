@@ -60,6 +60,28 @@ export const useCanvasStore = defineStore('templates', {
             } finally {
                 this.createLoading = false
             }
+        },
+        async deleteCanvasTemplate(id: number) {
+            this.loading = true
+            this.error = ''
+            try {
+                const token = localStorage.getItem('auth_token')
+                const response = await fetch('https://dev-api.aiscreen.io/api/v1/canvas_templates', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ id }),
+                })
+                if (!response.ok) throw new Error(`Error ${response.status}`)
+                this.templates = this.templates.filter(template => template.id !== id)
+            } catch (e: any) {
+                this.error = e.message || 'Unknown error'
+                throw e
+            } finally {
+                this.loading = false
+            }
         }
     },
 })

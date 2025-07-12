@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useCanvasStore } from '../stores/canvas'
 import type { CanvasTemplate } from '../types/canvas'
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
+import * as events from "node:events";
 
-
+const formImageFile = ref<File | null>(null)
+const previewUrl = ref<string>('')
 
 const emit = defineEmits<{
   (e: 'add', canvas: CanvasTemplate): void
@@ -20,6 +22,18 @@ const form = reactive({
 })
 const formError = ref('')
 
+watch(formImageFile, (file) => {
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      previewUrl.value = reader.result as string
+    }
+    reader.readAsDataURL(file)
+  } else {
+    previewUrl.value = ''
+  }
+})
+
 function resetForm() {
   form.name = ''
   form.tags = ''
@@ -28,11 +42,15 @@ function resetForm() {
   form.preview = ''
   formError.value = ''
 
+  formImageFile.value = null
+  previewUrl.value = ''
+
   store.createError = ''
 }
 
 const store = useCanvasStore()
 function formToCanvas(form: any): CanvasTemplate {
+  console.log('formImageFile', formImageFile.value)
   return {
     id: Date.now(),
     name: form.name.trim(),
@@ -43,7 +61,7 @@ function formToCanvas(form: any): CanvasTemplate {
       .map((t: string) => t.trim())
       .filter((t: string) => t !== ''),
     type: 'own',
-    preview_image: form.preview.toString() || undefined,
+    preview_image: formImageFile.value|| '',
   }
 }
 function addCard() {
@@ -56,6 +74,18 @@ function addCard() {
 function cancelCard() {
   resetForm()
   emit('cancel')
+}
+
+function uplodImage(e: events):void {
+  if (e?.target) {
+    const file = e.target.files?.[0] || null;
+    if (file && file.type.startsWith('image/')) {
+      formImageFile.value = file;
+      form.preview = '';
+    } else {
+      formError.value = 'Please select a valid image file.'
+    }
+  }
 }
 </script>
 
@@ -119,13 +149,33 @@ function cancelCard() {
       <!-- Preview Image URL -->
       <div class="sm:col-span-6">
         <label for="cover-photo" class="block text-sm/6 font-medium text-gray-900">Cover photo</label>
-        <div class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+        <div class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 relative overflow-hidden">
           <div class="text-center">
-            <img src="/photoIcon.svg" class="mx-auto opacity-25"  width="48" height="48" alt="Cover photo" />
+            <img
+              v-if="previewUrl"
+              :src="previewUrl"
+              class="mx-auto opacity-25 absolute -top-50 left-0"
+              alt="Cover preview"
+            />
+            <img
+              v-else
+              src="/photoIcon.svg"
+              class="mx-auto opacity-25"
+              width="48"
+              height="48"
+              alt="Cover photo"
+            />
             <div class="mt-4 flex text-sm/6 text-gray-600">
               <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 focus-within:outline-hidden hover:text-indigo-500">
                 <span>Upload a file</span>
-                <input id="file-upload" name="file-upload" type="file" class="sr-only" />
+                <input
+                  id="file-upload"
+                  name="file-upload"
+                  type="file"
+                  accept="image/*"
+                  class="sr-only"
+                  @change="uplodImage"
+                />
               </label>
               <p class="pl-1">or drag and drop</p>
             </div>

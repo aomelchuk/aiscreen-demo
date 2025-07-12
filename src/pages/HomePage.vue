@@ -32,6 +32,8 @@ function editCard(id: number) {
 
 function deleteCard(id: number) {
   store.templates = store.templates.filter(c => c.id !== id)
+  store.deleteCanvasTemplate(id)
+
 }
 
 function addCard() {

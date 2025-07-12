@@ -16,9 +16,11 @@ const onDelete = () => emit('delete', props.card.id)
   <div
       class="hover:grayscale-50 hover:cursor-pointer border border-gray-300 rounded p-4 shadow-sm flex flex-col"
   >
-    <img v-if="card.preview_image" :src="card.preview_image" alt="">
-    <h2 class="text-lg font-semibold mb-2">{{ card.name }}</h2>
-    <p class="flex-grow">{{ card.tags }}</p>
+    <img v-if="card.preview_image" :src="card.preview_image as string" alt="">
+    <h2 class="text-lg font-semibold mb-2 mt-2">{{ card.name }}</h2>
+    <p class="flex flex-grow gap-1">
+      <span v-for="tag in card.tags" :key="tag" class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-500/10 ring-inset">{{ tag }}</span>
+    </p>
 
     <div class="mt-4 flex justify-end space-x-2">
       <button
