@@ -89,8 +89,8 @@ export const useCanvasStore = defineStore('templates', {
           }
         },
         async createCanvasTemplate(template: CanvasTemplate) {
-            this.loading = true
-            this.error = ''
+            this.createLoading = true
+            this.createError = ''
             try {
                 const form = new FormData()
                 form.append('name', template.name)
@@ -111,6 +111,7 @@ export const useCanvasStore = defineStore('templates', {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                     body: form,
                 })
+                console.log(response)
                 if (!response.ok) throw new Error(`Error ${response.status}`)
                 const data = await response.json()
                 this.templates.unshift(data)

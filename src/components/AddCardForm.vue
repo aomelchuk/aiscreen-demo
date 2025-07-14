@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useCanvasStore } from '../stores/canvas'
 import type { CanvasTemplate } from '../types/canvas'
-import { ref, reactive, watch, computed, onMounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted, Teleport, Transition } from 'vue'
 import * as events from "node:events";
 import { useRouter } from 'vue-router'
 const router = useRouter()
+
+const store = useCanvasStore()
 
 const props = defineProps<{
   id?: number
@@ -61,6 +63,18 @@ watch(formImageFile, (file) => {
   }
 })
 
+const createError = computed(() => {
+  return store.createError
+})
+
+watch(createError, (value) => {
+  if (value) {
+    setTimeout(() => {
+      store.createError = null
+    }, 5000)
+  }
+})
+
 function resetForm() {
   form.name = ''
   form.tags = ''
@@ -72,10 +86,9 @@ function resetForm() {
   formImageFile.value = null
   previewUrl.value = ''
 
-  store.createError = ''
+  store.createError = null
 }
 
-const store = useCanvasStore()
 function formToCanvas(form: any): CanvasTemplate {
   console.log('formImageFile', formImageFile)
   return {
@@ -92,16 +105,33 @@ function formToCanvas(form: any): CanvasTemplate {
     ...(isEdit.value ? { description: form.description.trim() } : {}),
   }
 }
-function addCard() {
+
+function validateRequired() {
+  if (!form.name.trim() || !form.tags.trim() || !form.width.trim() || !form.height.trim()) {
+    formError.value = 'Name, tags, width, and height are required.'
+    return false
+  }
+  formError.value = ''
+  return true
+}
+
+async function addCard() {
+   if (!validateRequired()) return
   // form.name, form.tags, form.width, form.height, form.preview
-  store.createCanvasTemplate(formToCanvas(form))
-  emit('add', form)
-  //need to close dialog if success
+
+  try {
+    await store.createCanvasTemplate(formToCanvas(form))
+  } catch (e) {
+    store.createError = e.message
+     console.log(e)
+  }
+
+  if (!store.createError) emit('add', form)
 }
 
 async function saveCard() {
+  if (!validateRequired()) return
   const canvas = formToCanvas(form)
-  console.log("canvas", canvas)
   try {
     await store.updateCanvasTemplateById(props.id!, canvas)
     resetForm()
@@ -153,7 +183,6 @@ function uplodImage(e: events):void {
               placeholder="Template Name"
           />
         </div>
-        <p v-if="formError" class="mt-1 text-sm text-red-600">{{ formError }}</p>
       </div>
       <!-- Tags -->
       <div class="sm:col-span-6">
@@ -245,7 +274,9 @@ function uplodImage(e: events):void {
         </div>
       </div>
     </div>
+    <p v-if="formError" class="mt-1 text-sm text-red-600">{{ formError }}</p>
   </div>
+
   <div v-if="!isEdit" class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
     <button type="button" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500 sm:ml-3 sm:w-auto" @click="addCard">Add</button>
     <button type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto" @click="cancelCard" ref="cancelButtonRef">Cancel</button>
@@ -254,6 +285,32 @@ function uplodImage(e: events):void {
     <button type="button" class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-500 sm:ml-3 sm:w-auto" @click="saveCard">Save</button>
     <button type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto" @click="backToHomepage" ref="cancelButtonRef">Back</button>
   </div>
+  <Teleport to="body">
+    <Transition
+      enter-active-class="transition-opacity duration-300"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-300"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="store.createError" id="toast-danger" class="absolute top-5 right-5 z-1001 flex items-center w-full max-w-xs p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-sm dark:text-gray-400 dark:bg-gray-800" role="alert">
+        <div class="inline-flex items-center justify-center shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200">
+          <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 11.793a1 1 0 1 1-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L8.586 10 6.293 7.707a1 1 0 0 1 1.414-1.414L10 8.586l2.293-2.293a1 1 0 0 1 1.414 1.414L11.414 10l2.293 2.293Z"/>
+          </svg>
+          <span class="sr-only">Error icon</span>
+        </div>
+        <div class="ms-3 text-sm font-normal">{{ store.createError }}</div>
+        <button @click="store.createError = null" type="button" class="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" data-dismiss-target="#toast-danger" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+        </button>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
