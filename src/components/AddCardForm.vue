@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { useCanvasStore } from '../stores/canvas'
 import type { CanvasTemplate } from '../types/canvas'
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed, onMounted } from 'vue'
 import * as events from "node:events";
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
+const props = defineProps<{
+  id?: number
+}>()
 
 const formImageFile = ref<File | null>(null)
 const previewUrl = ref<string>('')
@@ -19,8 +25,29 @@ const form = reactive({
   width: '',
   height: '',
   preview: '',
+  description: '',
 })
 const formError = ref('')
+
+const isEdit = computed(() => props.id !== undefined)
+
+onMounted(async () => {
+  if (isEdit.value && props.id !== undefined) {
+    try {
+      const data = await store.getCanvasTemplateById(props.id)
+      form.name = data.name
+      if (data.tags) form.tags = data.tags.join(', ')
+      if (data.width) form.width = data.width
+      if (data.height)  form.height = data.height
+      if (data.preview_image ) {
+        form.preview = data.preview_image as string || ''
+        previewUrl.value = data.preview_image as string
+      }
+    } catch (e) {
+      formError.value = 'Failed to load template'
+    }
+  }
+})
 
 watch(formImageFile, (file) => {
   if (file) {
@@ -50,9 +77,9 @@ function resetForm() {
 
 const store = useCanvasStore()
 function formToCanvas(form: any): CanvasTemplate {
-  console.log('formImageFile', formImageFile.value)
+  console.log('formImageFile', formImageFile)
   return {
-    id: Date.now(),
+    id: props.id ?? Date.now(),
     name: form.name.trim(),
     width: form.width.trim(),
     height: form.height.trim(),
@@ -61,14 +88,27 @@ function formToCanvas(form: any): CanvasTemplate {
       .map((t: string) => t.trim())
       .filter((t: string) => t !== ''),
     type: 'own',
-    preview_image: formImageFile.value|| '',
+    preview_image: formImageFile.value || '',
+    ...(isEdit.value ? { description: form.description.trim() } : {}),
   }
 }
 function addCard() {
   // form.name, form.tags, form.width, form.height, form.preview
-  console.log('addCard', form)
   store.createCanvasTemplate(formToCanvas(form))
+  emit('add', form)
   //need to close dialog if success
+}
+
+async function saveCard() {
+  const canvas = formToCanvas(form)
+  console.log("canvas", canvas)
+  try {
+    await store.updateCanvasTemplateById(props.id!, canvas)
+    resetForm()
+    router.push({ path: '/' })
+  } catch {
+    formError.value = 'Failed to save'
+  }
 }
 
 function cancelCard() {
@@ -76,11 +116,19 @@ function cancelCard() {
   emit('cancel')
 }
 
+function backToHomepage() {
+  router.push({ path: '/' })
+  resetForm()
+  emit('cancel')
+}
+
 function uplodImage(e: events):void {
+  console.log('uplodImage', e)
   if (e?.target) {
     const file = e.target.files?.[0] || null;
     if (file && file.type.startsWith('image/')) {
       formImageFile.value = file;
+      console.log('formImageFile', formImageFile.value)
       form.preview = '';
     } else {
       formError.value = 'Please select a valid image file.'
@@ -146,6 +194,19 @@ function uplodImage(e: events):void {
           />
         </div>
       </div>
+      <!-- Description (shown only in edit mode) -->
+      <div v-if="isEdit" class="sm:col-span-6">
+        <label for="description" class="block text-sm font-medium text-gray-900">Description</label>
+        <div class="mt-1 flex items-center rounded-md bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-600">
+          <textarea
+            v-model="form.description"
+            id="description"
+            rows="3"
+            class="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm"
+            placeholder="Enter description"
+          ></textarea>
+        </div>
+      </div>
       <!-- Preview Image URL -->
       <div class="sm:col-span-6">
         <label for="cover-photo" class="block text-sm/6 font-medium text-gray-900">Cover photo</label>
@@ -185,9 +246,13 @@ function uplodImage(e: events):void {
       </div>
     </div>
   </div>
-  <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+  <div v-if="!isEdit" class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
     <button type="button" class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500 sm:ml-3 sm:w-auto" @click="addCard">Add</button>
     <button type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto" @click="cancelCard" ref="cancelButtonRef">Cancel</button>
+  </div>
+  <div v-else class="px-4 py-6 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-300">
+    <button type="button" class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-500 sm:ml-3 sm:w-auto" @click="saveCard">Save</button>
+    <button type="button" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto" @click="backToHomepage" ref="cancelButtonRef">Back</button>
   </div>
 </template>
 
