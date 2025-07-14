@@ -1,16 +1,16 @@
-#AIScreen Frontend Developer Test Task
+# AIScreen Frontend Developer Test Task
 
 This is the AIScreen test assignment for the Frontend Developer (Vue.js) position.
 
 ⸻
 
-#Requirements
+# Requirements
 •	Node.js: v20.19.3
 •	Vite: v7.0.4
 
 ⸻
 
-#Installation
+# Installation
 1.	Clone this repository
 2.	Install dependencies:
 
@@ -20,7 +20,7 @@ npm install
 
 ⸻
 
-#Development
+# Development
 
 Start the development server on http://localhost:5173/:
 
@@ -29,7 +29,7 @@ npm run dev
 
 ⸻
 
-#Authentication
+# Authentication
 
 The application requires login credentials. Create a .env file in the project root (this file is not committed to Git) with the following entries:
 
